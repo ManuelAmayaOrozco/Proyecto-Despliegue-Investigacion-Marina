@@ -11,7 +11,7 @@
 6. [Creación y Despliegue](#creación-y-despliegue)
    - [Creación imagen de Spring Boot](#creación-imagen-spring-boot)
    - [Creación y configuración de MySQL](#creación-y-configuración-mysql)
-   - [Despliegue de Kubernetes](#despliegue-de-la-aplicación)
+   - [Despliegue de la Aplicación](#despliegue-de-la-aplicación)
 7. [Verificación y Pruebas](#verificación-y-pruebas)
 9. [Miembros del Equipo](#miembros-del-equipo)
 
