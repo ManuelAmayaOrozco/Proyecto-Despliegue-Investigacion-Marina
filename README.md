@@ -133,7 +133,22 @@ kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documen
 
 - Una vez obtenido el .war, lo introducimos en nuestro nodo maestro utilizando una aplicación como FileZilla.
 
-- Ahora que tenemos el war en la máquina virtual, hemos de asegurarnos de que tenemos el archivo Dockerfile también, vendrá en este repositorio, lo podemos introducir en el nodo maestro utilizando FileZilla también.
+- Ahora que tenemos el war en la máquina virtual, hemos de asegurarnos de que tenemos el archivo Dockerfile también, vendrá en este repositorio, lo podemos introducir en el nodo maestro utilizando FileZilla también. El Dockerfile se va así:
+
+```bash
+# Utiliza una imagen base de OpenJDK
+FROM openjdk:11-jre-slim
+
+# Copia el archivo WAR de la aplicación
+COPY target/investigacion-marina.war /investigacion-marina.war
+
+# Expón el puerto en el que la aplicación estará disponible
+EXPOSE 8080
+
+# Comando para ejecutar la aplicación
+ENTRYPOINT ["java", "-war", "/investigacion-marina.war"]
+
+```
 
 - Una vez tenemos el war y el Dockerfile, podemos construir la imagen de la aplicación con el siguiente comando
 
@@ -149,15 +164,122 @@ docker images
 ### Creación y Configuración MySQL
 - Usaremos el archivo docker-compose.yml, el cual contiene la información necesaria para levantar un contenedor de MySQL usando docker-compose up, esto lo realizaremos en otra de las máquinas del cluster para tenerlo desplegado fuera del nodo maestro.
 
-- Después tendremos que utilizar el archivo mysql-deployment.yaml junto con el archivo Service, deben de estar en el mismo nodo con la imagen de MySQL, puedes introducirlos con FileZilla, una vez hecho podemos realizar el siguiente comando:
+```bash
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:5.7
+    container_name: mysql-db
+    environment:
+      MYSQL_ROOT_PASSWORD:
+      MYSQL_DATABASE: investigacion_marina_bd
+      MYSQL_USER: root
+      MYSQL_PASSWORD:
+    ports:
+      - "3306:3306"
+    networks:
+      - app-network
+    volumes:
+      - mysql-data:/var/lib/mysql
+    restart: always
+
+  springboot-app:
+    image: investigacion_marina:latest
+    container_name: investigacion_marina_app
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/investigacion_marina_bd
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
+    networks:
+      - app-network
+    restart: always
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  mysql-data:
+    driver: local
+
+```
+
+- Después tendremos que utilizar el archivo mysql-deployment.yaml, debe de estar en el mismo nodo con la imagen de MySQL, puedes introducirlo con FileZilla
+
+```bash
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql-db
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql-db
+  template:
+    metadata:
+      labels:
+        app: mysql-db
+    spec:
+      containers:
+      - name: mysql-db
+        image: mysql:5.7
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          value: 
+        - name: MYSQL_DATABASE
+          value: "investigacion_marina_bd"
+        ports:
+        - containerPort: 3306
+
+```
+
+- Una vez hecho podemos realizar el siguiente comando:
 
 ```bash
 kubectl apply -f mysql-deployment.yaml
 ```
-- Con este comando aplicaremos el Service y al deployment de MySQL.
+- Con este comando aplicaremos el deployment de MySQL y la aplicación.
 
 ### Despliegue de la Aplicación
-- Con el archivo investigacion-marina-deployment.yaml y el otro Service que viene en el repositorio, introdúcelo en el nodo maestro con FileZilla, este deployment nos permitirá desplegar la aplicación adecuadamente. Ahora podemos ejecutar el siguiente comando:
+- Con el archivo investigacion-marina-deployment.yaml que viene en el repositorio, introdúcelo en el nodo maestro con FileZilla, este deployment nos permitirá desplegar la aplicación adecuadamente.
+
+```bash
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: investigacion_marina_app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: investigacion_marina_app
+  template:
+    metadata:
+      labels:
+        app: investigacion_marina_app
+    spec:
+      containers:
+      - name: investigacion_marina
+        image: investigacion_marina:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://mysql-db:3306/investigacion_marina_bd
+        - name: SPRING_DATASOURCE_USERNAME
+          value: root
+        - name: SPRING_DATASOURCE_PASSWORD
+          value:
+
+```
+
+- Ahora podemos ejecutar el siguiente comando:
 
 ```bash
 kubectl apply -f investigacion-marina-deployment.yaml
