@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: investigacion_marina_app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: investigacion_marina_app
+  template:
+    metadata:
+      labels:
+        app: investigacion_marina_app
+    spec:
+      containers:
+      - name: investigacion_marina
+        image: investigacion_marina:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: SPRING_DATASOURCE_URL
+          value: jdbc:mysql://mysql-db:3306/investigacion_marina_bd
+        - name: SPRING_DATASOURCE_USERNAME
+          value: root
+        - name: SPRING_DATASOURCE_PASSWORD
+          value:
