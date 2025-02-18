@@ -101,7 +101,7 @@ docker --version
 -Nuevamente actualizamos los paquetes y repositorios por si acaso y seguidamente realizamos estos comandos:
 ```bash
 sudo apt install -y apt-transport-https curl
-curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | sudo apt-key add -
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.asc
 sudo apt update
 sudo apt install -y kubeadm kubelet kubectl
 ```
