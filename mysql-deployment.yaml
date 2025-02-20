@@ -1,24 +1,58 @@
+# Persistent Volume Claim (PVC) para almacenar los datos de MySQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc  # Nombre del PVC
+spec:
+  accessModes:
+    - ReadWriteOnce  # El PVC será accesible en modo lectura-escritura por un solo nodo
+  resources:
+    requests:
+      storage: 1Gi  # Se solicita 1GB de almacenamiento
+
+---
+# Servicio de Kubernetes para acceder a MySQL
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql  # Nombre del servicio de MySQL
+spec:
+  ports:
+    - port: 3306  # Puerto en el que MySQL está disponible
+  selector:
+    app: mysql  # Selecciona los pods con la etiqueta 'app: mysql'
+  clusterIP: None  # Usamos None porque MySQL será un servicio sin IP estática en el clúster, se necesita acceso desde dentro del clúster
+
+---
+# Despliegue de MySQL en Kubernetes
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql-db
+  name: mysql  # Nombre del deployment
 spec:
-  replicas: 1
+  replicas: 1  # Solo se ejecutará una réplica del contenedor MySQL
   selector:
     matchLabels:
-      app: mysql-db
+      app: mysql  # Coincide con los pods etiquetados con 'app: mysql'
   template:
     metadata:
       labels:
-        app: mysql-db
+        app: mysql  # Etiqueta del pod para asociarlo con el servicio y el deployment
     spec:
       containers:
-      - name: mysql-db
-        image: mysql:5.7
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: 
-        - name: MYSQL_DATABASE
-          value: "investigacion_marina_bd"
-        ports:
-        - containerPort: 3306
+        - name: mysql  # Nombre del contenedor
+          image: mysql:8  # Imagen de Docker de MySQL versión 8
+          env:
+            - name: MYSQL_ROOT_PASSWORD  # Variable de entorno para la contraseña del usuario root de MySQL
+              value: root  # Contraseña 'root' (deberías cambiarla en un entorno de producción)
+            - name: MYSQL_DATABASE  # Variable de entorno para crear la base de datos por defecto
+              value: investigacion_marina_bd  # Nombre de la base de datos a crear
+          ports:
+            - containerPort: 3306  # Puerto en el contenedor donde MySQL estará escuchando
+          volumeMounts:
+            - name: mysql-storage  # Nombre del volumen que montaremos en el contenedor
+              mountPath: /var/lib/mysql  # Ruta dentro del contenedor donde se almacenarán los datos de MySQL
+      volumes:
+        - name: mysql-storage  # Definimos el volumen
+          persistentVolumeClaim:
+            claimName: mysql-pvc  # El PVC que debe usarse para este volumen

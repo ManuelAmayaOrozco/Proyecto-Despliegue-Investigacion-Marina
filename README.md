@@ -1,25 +1,36 @@
 # Despliegue de una aplicación en Kubernetes
 
 ## Índice
-1. [Introducción](#introducción)
-2. [Descripción y Funcionalidad de la API](#descripción-y-funcionalidad-de-la-api)
-3. [Arquitectura de la Aplicación](#arquitectura-de-la-aplicación)
-4. [Prerrequisitos](#prerrequisitos)
-5. [Instalaciones](#instalaciones)
-   - [Instalación de Docker](#instalación-de-docker)
-   - [Instalación de Kubernetes](#instalación-de-kubernetes)
-6. [Creación y Despliegue](#creación-y-despliegue)
-   - [Creación imagen de Spring Boot](#creación-imagen-spring-boot)
-   - [Creación y configuración de MySQL](#creación-y-configuración-mysql)
-   - [Despliegue de la Aplicación](#despliegue-de-la-aplicación)
-7. [Verificación y Pruebas](#verificación-y-pruebas)
-9. [Miembros del Equipo](#miembros-del-equipo)
+- [Despliegue de una aplicación en Kubernetes](#despliegue-de-una-aplicación-en-kubernetes)
+  - [Índice](#índice)
+  - [Introducción](#introducción)
+  - [Descripción y Funcionalidad de la API](#descripción-y-funcionalidad-de-la-api)
+    - [Funcionalidades principales:](#funcionalidades-principales)
+    - [Endpoints](#endpoints)
+      - [Usuarios](#usuarios)
+      - [Peces](#peces)
+      - [Investigaciones](#investigaciones)
+  - [Arquitectura de la Aplicación](#arquitectura-de-la-aplicación)
+    - [Arquitectura General](#arquitectura-general)
+    - [Tecnologías Utilizadas](#tecnologías-utilizadas)
+    - [Seguridad y Roles](#seguridad-y-roles)
+  - [Prerrequisitos](#prerrequisitos)
+  - [Instalaciones](#instalaciones)
+    - [Instalación de Docker Desktop](#instalación-de-docker-desktop)
+    - [Instalación de Kubernetes dentro de Docker Desktop](#instalación-de-kubernetes-dentro-de-docker-desktop)
+  - [Creación y Despliegue](#creación-y-despliegue)
+    - [Creación Imagen Spring Boot](#creación-imagen-spring-boot)
+    - [Creación y Configuración MySQL](#creación-y-configuración-mysql)
+    - [Despliegue de la Aplicación](#despliegue-de-la-aplicación)
+  - [Verificación y Pruebas](#verificación-y-pruebas)
+    - [Comprobar el estado de los Pods y los Servicios](#comprobar-el-estado-de-los-pods-y-los-servicios)
+  - [Miembros del Equipo](#miembros-del-equipo)
 
 
 ---
 
 ## Introducción
-En este documento, vamos a explicar cómo desplegar una API REST construida con Spring Boot en un clúster de Kubernetes. A lo largo de los pasos, cubriremos cómo empaquetar la aplicación, crear los recursos necesarios de Kubernetes (como Pods, Deployments y Services) y cómo exponer tu API para que sea accesible desde el exterior.
+En este documento, vamos a explicar cómo desplegar una API REST construida con Spring Boot en un clúster de Kubernetes en Docker Desktop. A lo largo de los pasos, cubriremos cómo empaquetar la aplicación, crear los recursos necesarios de Kubernetes (como Pods, Deployments y Services) y cómo exponer tu API para que sea accesible desde el exterior.
 
 El objetivo es proporcionar una guía detallada para que puedas llevar tu aplicación Spring Boot a un entorno de producción, aprovechando la escalabilidad y la gestión de contenedores que ofrece Kubernetes.
 
@@ -70,7 +81,7 @@ La aplicación sigue una arquitectura de tres capas:
 ### Tecnologías Utilizadas
 - **Backend:** Java con Spring Boot, seguridad mediante Spring Security y tokens JWT.
 - **Base de Datos:** MySQL.
-- **Frontend:** Integrable con React o Angular a través de APIs RESTful.
+- **Despligue:** Docker Desktop
 
 ### Seguridad y Roles
 - **JWT (JSON Web Tokens)** para autenticación.
@@ -79,167 +90,132 @@ La aplicación sigue una arquitectura de tres capas:
   - `USER`: Acceso restringido a sus propios datos.
 
 ## Prerrequisitos
-- Docker y Kubernetes instalados.
-- Conocimiento de Pods, Deployments y Services.
-- Aplicación Spring Boot lista para desplegar.
-- Máquinas Virtuales con Ubuntu (mínimo dos).
+- **Docker Desktop** instalado, con Kubernetes habilitado dentro de Docker Desktop.
+- Conocimientos básicos sobre **Pods**, **Deployments** y **Services** en Kubernetes.
+- Aplicación **Spring Boot** lista para ser desplegada, empaquetada como archivo `.jar`.
 
 ## Instalaciones
 
-### Instalación de Docker
-- Para instalar Docker en nuestra máquina virtual basta con utilizar los siguientes comandos:
+### Instalación de Docker Desktop
+
+### Instalación de Kubernetes dentro de Docker Desktop
+- Docker Desktop incluye soporte nativo para Kubernetes. 
+- Para habilitar Kubernetes, abre Docker Desktop y ve a Settings > Kubernetes y marca la opción Enable Kubernetes. 
+- Esto instalará y configurará un clúster de Kubernetes dentro de Docker.
+
+- Verifica que Kubernetes esté funcionando correctamente ejecutando:
 ```bash
-sudo apt update
-sudo apt install -y docker.io
-```
-- Actualizamos los repositorios y paquetes con apt update y seguidamente instalamos docker con el apt install. Podemos ver si Docker ha sido instalado correctamente mirando su versión con el siguiente comando:
-```bash
-docker --version
+kubectl version --client  # Muestra la versión del cliente de kubectl
 ```
 
-### Instalación de Kubernetes
--Nuevamente actualizamos los paquetes y repositorios por si acaso y seguidamente realizamos estos comandos:
-```bash
-sudo apt install -y apt-transport-https curl
-curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.28/deb/Release.key | sudo tee /etc/apt/keyrings/kubernetes-apt-keyring.asc
-sudo apt update
-sudo apt install -y kubeadm kubelet kubectl
-```
-- El curl nos ayudará a obtener los paquetes necesarios para poder instalar tanto kubeadm, kubelet y kubectl; realizaremos este paso dentro de las máquinas virtuales a las que queramos añadir al pod.
-- Nos aseguramos de que Docker y Kubernetes se mantienen encendidos en todo momento con el siguiente comando
-```bash
-sudo systemctl enable docker
-sudo systemctl enable kubelet
-```
-- Ahora dentro del nodo maestro (la máquina virtual en la que queramos controlar el cluster) usamos este comando.
-```bash
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-```
-- Nos debería de devolver un token con el cual podremos añadir las otras máquinas al cluster.
-- Este paso es opcional, pero si queremos utilizar kubectl sin necesidad de sudo hemos de ejecutar los siguientes comandos
-```bash
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-```
-- Ya solo necesitamos instalar una red de pods, usaremos Flannel.
-```bash
-kubectl apply -f https://raw.githubusercontent.com/coreos/flannel/master/Documentation/kube-flannel.yml
-```
 ## Creación y Despliegue
 
 ### Creación Imagen Spring Boot
-- Para empezar debemos de empaquetar nuestra aplicación como un archivo .war, para esto podemos utilizar Intellij, ya que la aplicación contiene Gradle, el cual nos permite crear el archivo .war con facilidad. Ejecutamos la Task de Gradle para construir el war.
-
-- Una vez obtenido el .war, lo introducimos en nuestro nodo maestro utilizando una aplicación como FileZilla.
-
-- Ahora que tenemos el war en la máquina virtual, hemos de asegurarnos de que tenemos el archivo Dockerfile también, vendrá en este repositorio, lo podemos introducir en el nodo maestro utilizando FileZilla también. El Dockerfile se va así:
+- Para empaquetar nuestra aplicación Spring Boot como un archivo .jar, puedes usar Gradle. En Intellij, abre la terminal en tu proyecto y ejecuta el siguiente comando:
 
 ```bash
-# Utiliza una imagen base de OpenJDK
-FROM openjdk:11-jre-slim
+./gradlew bootJar
+```
+- Esto generará el archivo .jar en la carpeta build/libs.
+- Verifica que el archivo .jar se haya generado correctamente y, a continuación, colócalo en la carpeta de tu aplicación.
+- Asegúrate de que el archivo Dockerfile esté presente en tu repositorio. El contenido del Dockerfile es el siguiente:
 
-# Copia el archivo WAR de la aplicación
-COPY target/investigacion-marina.war /investigacion-marina.war
+```bash
+# Usa una imagen base de OpenJDK
+FROM openjdk:17-jdk-slim
 
-# Expón el puerto en el que la aplicación estará disponible
+# Copia el archivo JAR al contenedor
+COPY investigacion-marina.jar /app/investigacion-marina.jar
+
+# Exponer el puerto que tu aplicación usará
 EXPOSE 8080
 
-# Comando para ejecutar la aplicación
-ENTRYPOINT ["java", "-war", "/investigacion-marina.war"]
+# Comando para ejecutar el JAR
+ENTRYPOINT ["java", "-jar", "/app/investigacion-marina.jar"]
 
 ```
 
-- Una vez tenemos el war y el Dockerfile, podemos construir la imagen de la aplicación con el siguiente comando
+- Con el archivo .jar y el Dockerfile listos, construye la imagen Docker de la aplicación con el siguiente comando:
 
 ```bash
 docker build -t investigacion-marina .
 
 ```
-- Con esto deberíamos tener la imagen creada, podemos verificarlo usando el siguiente comando para ver todas las imágenes actuales.
+- Con esto la imagen está creada, verifica que la imagen se haya creado correctamente ejecutando:
 
 ```bash
 docker images
 ```
+
 ### Creación y Configuración MySQL
-- Usaremos el archivo docker-compose.yml, el cual contiene la información necesaria para levantar un contenedor de MySQL usando docker-compose up, esto lo realizaremos en otra de las máquinas del cluster para tenerlo desplegado fuera del nodo maestro.
+- Usaremos el archivo mysql-deployment.yaml para configurar el despliegue de MySQL en Kubernetes. Este archivo contiene toda la configuración necesaria para crear el contenedor de MySQL y montar un volumen persistente.
+  
+- El contenido de mysql-deployment.yaml es el siguiente:
 
 ```bash
-version: '3.8'
+# Persistent Volume Claim (PVC) para almacenar los datos de MySQL
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc  # Nombre del PVC
+spec:
+  accessModes:
+    - ReadWriteOnce  # El PVC será accesible en modo lectura-escritura por un solo nodo
+  resources:
+    requests:
+      storage: 1Gi  # Se solicita 1GB de almacenamiento
 
-services:
-  mysql:
-    image: mysql:5.7
-    container_name: mysql-db
-    environment:
-      MYSQL_ROOT_PASSWORD:
-      MYSQL_DATABASE: investigacion_marina_bd
-      MYSQL_USER: root
-      MYSQL_PASSWORD:
-    ports:
-      - "3306:3306"
-    networks:
-      - app-network
-    volumes:
-      - mysql-data:/var/lib/mysql
-    restart: always
+---
+# Servicio de Kubernetes para acceder a MySQL
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql  # Nombre del servicio de MySQL
+spec:
+  ports:
+    - port: 3306  # Puerto en el que MySQL está disponible
+  selector:
+    app: mysql  # Selecciona los pods con la etiqueta 'app: mysql'
+  clusterIP: None  # Usamos None porque MySQL será un servicio sin IP estática en el clúster, se necesita acceso desde dentro del clúster
 
-  springboot-app:
-    image: investigacion_marina:latest
-    container_name: investigacion_marina_app
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql-db:3306/investigacion_marina_bd
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: 
-    ports:
-      - "8080:8080"
-    depends_on:
-      - mysql
-    networks:
-      - app-network
-    restart: always
-
-networks:
-  app-network:
-    driver: bridge
-
-volumes:
-  mysql-data:
-    driver: local
-
-```
-
-- Después tendremos que utilizar el archivo mysql-deployment.yaml, debe de estar en el mismo nodo con la imagen de MySQL, puedes introducirlo con FileZilla
-
-```bash
+---
+# Despliegue de MySQL en Kubernetes
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: mysql-db
+  name: mysql  # Nombre del deployment
 spec:
-  replicas: 1
+  replicas: 1  # Solo se ejecutará una réplica del contenedor MySQL
   selector:
     matchLabels:
-      app: mysql-db
+      app: mysql  # Coincide con los pods etiquetados con 'app: mysql'
   template:
     metadata:
       labels:
-        app: mysql-db
+        app: mysql  # Etiqueta del pod para asociarlo con el servicio y el deployment
     spec:
       containers:
-      - name: mysql-db
-        image: mysql:5.7
-        env:
-        - name: MYSQL_ROOT_PASSWORD
-          value: 
-        - name: MYSQL_DATABASE
-          value: "investigacion_marina_bd"
-        ports:
-        - containerPort: 3306
+        - name: mysql  # Nombre del contenedor
+          image: mysql:8  # Imagen de Docker de MySQL versión 8
+          env:
+            - name: MYSQL_ROOT_PASSWORD  # Variable de entorno para la contraseña del usuario root de MySQL
+              value: root  # Contraseña 'root' (deberías cambiarla en un entorno de producción)
+            - name: MYSQL_DATABASE  # Variable de entorno para crear la base de datos por defecto
+              value: investigacion_marina_bd  # Nombre de la base de datos a crear
+          ports:
+            - containerPort: 3306  # Puerto en el contenedor donde MySQL estará escuchando
+          volumeMounts:
+            - name: mysql-storage  # Nombre del volumen que montaremos en el contenedor
+              mountPath: /var/lib/mysql  # Ruta dentro del contenedor donde se almacenarán los datos de MySQL
+      volumes:
+        - name: mysql-storage  # Definimos el volumen
+          persistentVolumeClaim:
+            claimName: mysql-pvc  # El PVC que debe usarse para este volumen
+
 
 ```
 
-- Una vez hecho podemos realizar el siguiente comando:
+- Aplica el archivo de despliegue con el siguiente comando:
 
 ```bash
 kubectl apply -f mysql-deployment.yaml
@@ -247,39 +223,62 @@ kubectl apply -f mysql-deployment.yaml
 - Con este comando aplicaremos el deployment de MySQL y la aplicación.
 
 ### Despliegue de la Aplicación
-- Con el archivo investigacion-marina-deployment.yaml que viene en el repositorio, introdúcelo en el nodo maestro con FileZilla, este deployment nos permitirá desplegar la aplicación adecuadamente.
+- Para desplegar la aplicación Spring Boot, debes usar el archivo api-deployment.yaml, el cual está incluido en este repositorio. Este archivo contiene la configuración necesaria para el despliegue de la API en Kubernetes.
+  
+- El contenido de api-deployment.yaml es el siguiente:
 
 ```bash
+# Despliegue de la API de investigación marina en Kubernetes
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: investigacion_marina_app
+  name: api-investigacion-marina  # Nombre del deployment
 spec:
-  replicas: 1
+  replicas: 1  # Número de réplicas del pod (en este caso solo una)
   selector:
     matchLabels:
-      app: investigacion_marina_app
+      app: api-investigacion-marina  # Selecciona los pods que tengan esta etiqueta
   template:
     metadata:
       labels:
-        app: investigacion_marina_app
+        app: api-investigacion-marina  # Etiqueta para los pods creados por este deployment
     spec:
       containers:
-      - name: investigacion_marina
-        image: investigacion_marina:latest
-        ports:
-        - containerPort: 8080
-        env:
-        - name: SPRING_DATASOURCE_URL
-          value: jdbc:mysql://mysql-db:3306/investigacion_marina_bd
-        - name: SPRING_DATASOURCE_USERNAME
-          value: root
-        - name: SPRING_DATASOURCE_PASSWORD
-          value:
+        - name: api-investigacion-marina  # Nombre del contenedor
+          image: investigacion-marina:latest  # Imagen Docker a usar (tu API)
+          imagePullPolicy: Never  # No intentará descargar la imagen, ya que se asume que ya está presente en el nodo
+          ports:
+            - containerPort: 8080  # Puerto en el contenedor donde la API escuchará (normalmente 8080 para aplicaciones Spring Boot)
+          env:
+            # Variables de entorno para configurar la base de datos de la API
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/investigacion_marina_bd  # URL de conexión a la base de datos MySQL
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root  # Nombre de usuario para la base de datos
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: root  # Contraseña para la base de datos
+
+---
+# Servicio de Kubernetes para exponer la API
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-investigacion-marina  # Nombre del servicio
+spec:
+  selector:
+    app: api-investigacion-marina  # Este servicio se conecta a los pods con la etiqueta 'app: api-investigacion-marina'
+  ports:
+    - protocol: TCP  # El protocolo utilizado será TCP
+      port: 8080  # Puerto en el servicio para acceder a la API
+      targetPort: 8080  # Puerto en el contenedor donde la API está escuchando
+      nodePort: 31295  # Puerto expuesto en el nodo (se usa para acceder desde fuera del clúster)
+  type: NodePort  # El servicio se configura como NodePort, lo que permite el acceso desde fuera del clúster
+
+
 
 ```
 
-- Ahora podemos ejecutar el siguiente comando:
+- Aplica el archivo de despliegue con el siguiente comando:
 
 ```bash
 kubectl apply -f investigacion-marina-deployment.yaml
@@ -287,10 +286,40 @@ kubectl apply -f investigacion-marina-deployment.yaml
 
 ## Verificación y Pruebas
 
-- Con esto hecho, podemos verificar el despliegue con kubectl get pods y kubectl get svc, si todo está correcto la aplicación debería estar correctamente desplegada en el cluster.
+Una vez que hayas desplegado la aplicación y la base de datos en Kubernetes, es importante verificar que todo está funcionando correctamente y que puedes acceder a los endpoints de la API.
+
+### Comprobar el estado de los Pods y los Servicios
+
+1. **Verifica que los Pods estén funcionando correctamente**. Ejecuta el siguiente comando:
 ```bash
-kubectl get pods
-kubectl get svc
+kubectl get pods  # Muestra el estado de todos los pods en el clúster
+```
+
+2. **Verifica que los Servicios estén correctamente configurados**. Ejecuta:
+```bash
+kubectl get pods  # Muestra el estado de todos los pods en el clúster
+```
+ - Deberías ver algo como esto:
+```bash
+NAME                        TYPE       CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
+api-investigacion-marina     NodePort   10.110.1.100     <none>        8080:31295/TCP   5m
+mysql                        ClusterIP  10.110.1.101     <none>        3306/TCP         5m
+```
+
+3. **Obtener la IP de acceso**: En el resultado del comando anterior, busca la columna PORT(S) para tu servicio api-investigacion-marina. El formato será algo como 8080:31295/TCP. Aquí, el puerto 31295 es el puerto en el nodo que se ha expuesto, y puedes acceder a la aplicación a través de este puerto.
+
+4. **Acceder al servicio**: Utilizando la IP de tu nodo y el puerto expuesto, abre tu navegador, Insomnia o Postman y prueba acceder a la API.
+   - Si estás usando Docker Desktop con Kubernetes habilitado, puedes acceder a través de localhost o la IP de tu máquina, seguida del puerto 31295. Por ejemplo:
+```bash
+http://localhost:31295/
+```
+
+5. **Probar los Endpoints**: Si la aplicación está correctamente desplegada, deberías poder acceder a los endpoints de la API. Puedes probar las solicitudes con herramientas como Postman o Insomnia.
+
+  - **Ejemplo:**
+    - Para realizar un registro de la API, realiza una solicitud POST a:
+```bash
+ http://localhost:31295/usuarios/register 
 ```
 
 ## Miembros del Equipo

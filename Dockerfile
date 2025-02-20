@@ -1,11 +1,11 @@
-# Utiliza una imagen base de OpenJDK
-FROM openjdk:11-jre-slim
+# Usa una imagen base de OpenJDK
+FROM openjdk:17-jdk-slim
 
-# Copia el archivo WAR de la aplicación
-COPY target/investigacion-marina.war /investigacion-marina.war
+# Copia el archivo JAR al contenedor
+COPY investigacion-marina.jar /app/investigacion-marina.jar
 
-# Expón el puerto en el que la aplicación estará disponible
+# Exponer el puerto que tu aplicación usará
 EXPOSE 8080
 
-# Comando para ejecutar la aplicación
-ENTRYPOINT ["java", "-war", "/investigacion-marina.war"]
+# Comando para ejecutar el JAR
+ENTRYPOINT ["java", "-jar", "/app/investigacion-marina.jar"]

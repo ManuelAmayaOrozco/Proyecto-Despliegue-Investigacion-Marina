@@ -1,0 +1,46 @@
+# Despliegue de la API de investigación marina en Kubernetes
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-investigacion-marina  # Nombre del deployment
+spec:
+  replicas: 1  # Número de réplicas del pod (en este caso solo una)
+  selector:
+    matchLabels:
+      app: api-investigacion-marina  # Selecciona los pods que tengan esta etiqueta
+  template:
+    metadata:
+      labels:
+        app: api-investigacion-marina  # Etiqueta para los pods creados por este deployment
+    spec:
+      containers:
+        - name: api-investigacion-marina  # Nombre del contenedor
+          image: investigacion-marina:latest  # Imagen Docker a usar (tu API)
+          imagePullPolicy: Never  # No intentará descargar la imagen, ya que se asume que ya está presente en el nodo
+          ports:
+            - containerPort: 8080  # Puerto en el contenedor donde la API escuchará (normalmente 8080 para aplicaciones Spring Boot)
+          env:
+            # Variables de entorno para configurar la base de datos de la API
+            - name: SPRING_DATASOURCE_URL
+              value: jdbc:mysql://mysql:3306/investigacion_marina_bd  # URL de conexión a la base de datos MySQL
+            - name: SPRING_DATASOURCE_USERNAME
+              value: root  # Nombre de usuario para la base de datos
+            - name: SPRING_DATASOURCE_PASSWORD
+              value: root  # Contraseña para la base de datos
+
+---
+# Servicio de Kubernetes para exponer la API
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-investigacion-marina  # Nombre del servicio
+spec:
+  selector:
+    app: api-investigacion-marina  # Este servicio se conecta a los pods con la etiqueta 'app: api-investigacion-marina'
+  ports:
+    - protocol: TCP  # El protocolo utilizado será TCP
+      port: 8080  # Puerto en el servicio para acceder a la API
+      targetPort: 8080  # Puerto en el contenedor donde la API está escuchando
+      nodePort: 31295  # Puerto expuesto en el nodo (se usa para acceder desde fuera del clúster)
+  type: NodePort  # El servicio se configura como NodePort, lo que permite el acceso desde fuera del clúster
+
